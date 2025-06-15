@@ -1,216 +1,164 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <title>Rohstoff-Karte mit Wichtigkeit</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8" />
+  <title>Rohstoffkarte</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    crossorigin=""
   />
   <style>
-    html, body {
+    html, body, #map {
       height: 100%;
       margin: 0;
     }
-    #map {
-      height: 100vh;
-      width: 100vw;
-    }
-    .legend, .priority {
+
+    .legend-container {
       position: absolute;
-      background: white;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.3);
-      font-family: sans-serif;
-      font-size: 14px;
-      display: flex;
-      gap: 10px;
-      cursor: pointer;
-      user-select: none;
+      bottom: 10px;
+      right: 10px;
       z-index: 1000;
-      flex-wrap: wrap;
     }
-    .legend {
-      bottom: 20px;
-      right: 20px;
-      max-width: 400px;
+
+    .legend-toggle {
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      cursor: pointer;
+      padding: 5px 8px;
+      font-size: 16px;
     }
-    .priority {
-      bottom: 20px;
-      left: 20px;
+
+    .legend-box {
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid #ccc;
+      padding: 10px;
+      border-radius: 10px;
+      margin-top: 8px;
+      display: none;
     }
-    .icon, .prio {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      padding: 6px;
-      border: 2px solid transparent;
+
+    .legend-icon {
+      width: 30px;
+      height: 30px;
+      margin: 5px;
+      cursor: pointer;
+    }
+
+    .selected {
+      outline: 2px solid blue;
+    }
+
+    .importance-button {
+      padding: 5px 10px;
+      margin: 5px;
+      border: none;
       border-radius: 6px;
-      transition: border-color 0.3s;
-      min-width: 48px;
+      cursor: pointer;
+      color: white;
     }
-    .icon.active, .prio.active {
-      border-color: #0078ff;
-      background-color: #e0f0ff;
+
+    .importance-low {
+      background-color: green;
     }
-    .icon img, .prio div {
-      width: 32px;
-      height: 32px;
-      pointer-events: none;
-      border-radius: 50%;
+
+    .importance-medium {
+      background-color: orange;
     }
-    .prio div {
-      border: 2px solid #333;
-    }
-    .prio span {
-      font-size: 12px;
-    }
-    .marker-wrapper {
-      position: relative;
-      width: 32px;
-      height: 32px;
-    }
-    .marker-wrapper img {
-      width: 100%;
-      height: 100%;
-    }
-    .marker-priority {
-      position: absolute;
-      top: -4px;
-      right: -4px;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      border: 2px solid white;
-      box-shadow: 0 0 2px #000;
+
+    .importance-high {
+      background-color: red;
     }
   </style>
 </head>
 <body>
+  <div id="map"></div>
 
-<div id="map"></div>
+  <div class="legend-container">
+    <button class="legend-toggle" onclick="toggleLegends()">🡹</button>
+    
+    <div id="legend" class="legend-box">
+      <strong>Rohstoffe:</strong><br>
+      <img src="https://i.postimg.cc/MKtSBSKG/TOOLS-069-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Eisen')">
+      <img src="https://i.postimg.cc/NG6YgX3m/Shid-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Kupfer')">
+      <img src="https://i.postimg.cc/7LjDLnPM/Science-flask-symbol-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Lithium')">
+      <img src="https://i.postimg.cc/Twmx55p8/Religious-Salt-free-icons-designed-by-Freepik-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Salz')">
+      <img src="https://i.postimg.cc/FHRQgB7V/images-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Erdgas')">
+      <img src="https://i.postimg.cc/T37fzXZs/H2o-Clipart-Transparent-Background-Vector-H2o-Icon-H20-Water-Drop-PNG-Image-For-Free-Download-re.png" class="legend-icon" onclick="selectIcon(this, 'Wasser')">
+      <img src="https://i.postimg.cc/kXynySwq/Download-16-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Holz')">
+      <img src="https://i.postimg.cc/3J3hWRh6/Download-15-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Diamant')">
+      <img src="https://i.postimg.cc/pL6M0Jjb/Download-14-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Kohle')">
+      <img src="https://i.postimg.cc/g0xmdTp2/Alchemy-Symbols-Visual-Library-of-Alchemy-Symbols-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Uran')">
+    </div>
 
-<div class="legend" id="legend"></div>
-<div class="priority" id="priority"></div>
+    <div id="importance" class="legend-box">
+      <strong>Wichtigkeit:</strong><br>
+      <button class="importance-button importance-low" onclick="setImportance('low')">Niedrig</button>
+      <button class="importance-button importance-medium" onclick="setImportance('medium')">Mittel</button>
+      <button class="importance-button importance-high" onclick="setImportance('high')">Hoch</button>
+    </div>
+  </div>
 
-<script
-  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-  crossorigin=""
-></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([20, 0], 2);
 
-<script>
-  const map = L.map('map').setView([30, 10], 3);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap-Mitwirkende'
+    }).addTo(map);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap-Mitwirkende'
-  }).addTo(map);
+    let selectedIconUrl = null;
+    let selectedIconEl = null;
+    let selectedImportance = 'low';
 
-  const resources = [
-    { id: 'eisen', name: 'Eisen' },
-    { id: 'kupfer', name: 'Kupfer' },
-    { id: 'lithium', name: 'Lithium' },
-    { id: 'salz', name: 'Salz' },
-    { id: 'erdgas', name: 'Erdgas' },
-    { id: 'wasser', name: 'Wasser' },
-    { id: 'holz', name: 'Holz' },
-    { id: 'diamant', name: 'Diamant' },
-    { id: 'kohle', name: 'Kohle' },
-    { id: 'uran', name: 'Uran' }
-  ];
+    function selectIcon(el, name) {
+      if (selectedIconEl === el) {
+        selectedIconUrl = null;
+        selectedIconEl.classList.remove("selected");
+        selectedIconEl = null;
+      } else {
+        if (selectedIconEl) selectedIconEl.classList.remove("selected");
+        selectedIconUrl = el.src;
+        el.classList.add("selected");
+        selectedIconEl = el;
+      }
+    }
 
-  const iconUrls = [
-    'https://i.postimg.cc/MKtSBSKG/TOOLS-069-removebg-preview.png',
-    'https://i.postimg.cc/NG6YgX3m/Shid-removebg-preview.png',
-    'https://i.postimg.cc/7LjDLnPM/Science-flask-symbol-removebg-preview.png',
-    'https://i.postimg.cc/Twmx55p8/Religious-Salt-free-icons-designed-by-Freepik-removebg-preview.png',
-    'https://i.postimg.cc/FHRQgB7V/images-removebg-preview.png',
-    'https://i.postimg.cc/T37fzXZs/H2o-Clipart-Transparent-Background-Vector-H2o-Icon-H20-Water-Drop-PNG-Image-For-Free-Download-re.png',
-    'https://i.postimg.cc/kXynySwq/Download-16-removebg-preview.png',
-    'https://i.postimg.cc/3J3hWRh6/Download-15-removebg-preview.png',
-    'https://i.postimg.cc/pL6M0Jjb/Download-14-removebg-preview.png',
-    'https://i.postimg.cc/g0xmdTp2/Alchemy-Symbols-Visual-Library-of-Alchemy-Symbols-removebg-preview.png'
-  ];
+    function setImportance(level) {
+      selectedImportance = level;
+    }
 
-  const priorities = [
-    { id: 'low', name: 'Niedrig', color: 'green' },
-    { id: 'medium', name: 'Mittel', color: 'orange' },
-    { id: 'high', name: 'Hoch', color: 'red' }
-  ];
+    function toggleLegends() {
+      const legend = document.getElementById("legend");
+      const importance = document.getElementById("importance");
+      const isVisible = legend.style.display === "block";
+      legend.style.display = isVisible ? "none" : "block";
+      importance.style.display = isVisible ? "none" : "block";
+    }
 
-  const resourcesWithIcons = resources.map((res, idx) => ({
-    ...res,
-    iconUrl: iconUrls[idx]
-  }));
+    map.on('click', function (e) {
+      if (selectedIconUrl) {
+        const icon = L.icon({
+          iconUrl: selectedIconUrl,
+          iconSize: [32, 32],
+          className: `importance-${selectedImportance}`
+        });
 
-  let activeResource = null;
-  let activePriority = null;
+        const marker = L.marker(e.latlng, { icon }).addTo(map);
 
-  const markersLayer = L.layerGroup().addTo(map);
-  const legendDiv = document.getElementById('legend');
-  const priorityDiv = document.getElementById('priority');
-
-  function updateLegendUI() {
-    document.querySelectorAll('.icon').forEach(el => {
-      el.classList.toggle('active', el.dataset.id === activeResource);
+        // Optional: bei Zoomlevel Marker ausblenden (wie vorher)
+        map.on('zoomend', function () {
+          const currentZoom = map.getZoom();
+          if (currentZoom < 4) {
+            map.removeLayer(marker);
+          } else {
+            map.addLayer(marker);
+          }
+        });
+      }
     });
-    document.querySelectorAll('.prio').forEach(el => {
-      el.classList.toggle('active', el.dataset.id === activePriority);
-    });
-  }
-
-  function createCustomIcon(iconUrl, priorityColor) {
-    const div = document.createElement('div');
-    div.className = 'marker-wrapper';
-    div.innerHTML = `
-      <img src="${iconUrl}" />
-      <div class="marker-priority" style="background:${priorityColor}"></div>
-    `;
-    return L.divIcon({
-      className: '',
-      html: div.outerHTML,
-      iconSize: [32, 32],
-      iconAnchor: [16, 32],
-      popupAnchor: [0, -32]
-    });
-  }
-
-  resourcesWithIcons.forEach(res => {
-    const el = document.createElement('div');
-    el.className = 'icon';
-    el.dataset.id = res.id;
-    el.innerHTML = `<img src="${res.iconUrl}" alt="${res.name}"><span>${res.name}</span>`;
-    el.addEventListener('click', () => {
-      activeResource = res.id;
-      updateLegendUI();
-    });
-    legendDiv.appendChild(el);
-  });
-
-  priorities.forEach(p => {
-    const el = document.createElement('div');
-    el.className = 'prio';
-    el.dataset.id = p.id;
-    el.innerHTML = `<div style="background:${p.color}"></div><span>${p.name}</span>`;
-    el.addEventListener('click', () => {
-      activePriority = p.id;
-      updateLegendUI();
-    });
-    priorityDiv.appendChild(el);
-  });
-
-  map.on('click', e => {
-    if (!activeResource || !activePriority) return;
-    const res = resourcesWithIcons.find(r => r.id === activeResource);
-    const prio = priorities.find(p => p.id === activePriority);
-    const icon = createCustomIcon(res.iconUrl, prio.color);
-    L.marker(e.latlng, { icon }).addTo(markersLayer).bindPopup(`${res.name} (${prio.name})`);
-  });
-</script>
-
+  </script>
 </body>
 </html>
