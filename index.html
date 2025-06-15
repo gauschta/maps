@@ -2,9 +2,12 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <title>Rohstoffkarte</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <title>Rohstoffkarte mit Raketenreichweite</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
   <style>
     html, body, #map {
       height: 100%;
@@ -34,6 +37,7 @@
       border-radius: 10px;
       margin-top: 8px;
       display: none;
+      max-width: 280px;
     }
 
     .legend-icon {
@@ -68,47 +72,102 @@
       background-color: red;
     }
 
-    .control-buttons {
-      margin-top: 10px;
+    /* Raketen-Fenster */
+    #missileWindow {
+      display: none;
+      position: absolute;
+      top: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      border: 2px solid black;
+      padding: 15px;
+      max-width: 320px;
+      max-height: 400px;
+      overflow-y: auto;
+      z-index: 1500;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      border-radius: 8px;
+    }
+    #missileWindow button.closeBtn {
+      float: right;
+      font-weight: bold;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-size: 18px;
+      line-height: 1;
+      padding: 0;
+    }
+    #missileWindow h3 {
+      margin-top: 0;
+      clear: both;
+    }
+    #missileWindow ul {
+      padding-left: 20px;
+      margin-top: 5px;
+      margin-bottom: 15px;
+    }
+    #missileWindow ul li {
+      margin-bottom: 6px;
     }
 
-    .control-buttons button {
-      margin: 3px;
-      padding: 5px 10px;
+    /* Button Distanzmessung */
+    #distanceToggleBtn {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1500;
+      background: white;
+      border: 1px solid #444;
+      padding: 6px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      user-select: none;
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
+  <button id="distanceToggleBtn">Distanzmessung starten</button>
+
   <div class="legend-container">
     <button class="legend-toggle" onclick="toggleLegends()">🡹</button>
 
     <div id="legend" class="legend-box">
-      <strong>Rohstoffe:</strong><br>
-      <img src="https://i.postimg.cc/MKtSBSKG/TOOLS-069-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Eisen')">
-      <img src="https://i.postimg.cc/NG6YgX3m/Shid-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Kupfer')">
-      <img src="https://i.postimg.cc/7LjDLnPM/Science-flask-symbol-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Lithium')">
-      <img src="https://i.postimg.cc/Twmx55p8/Religious-Salt-free-icons-designed-by-Freepik-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Salz')">
-      <img src="https://i.postimg.cc/FHRQgB7V/images-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Erdgas')">
-      <img src="https://i.postimg.cc/T37fzXZs/H2o-Clipart-Transparent-Background-Vector-H2o-Icon-H20-Water-Drop-PNG-Image-For-Free-Download-re.png" class="legend-icon" onclick="selectIcon(this, 'Wasser')">
-      <img src="https://i.postimg.cc/kXynySwq/Download-16-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Holz')">
-      <img src="https://i.postimg.cc/3J3hWRh6/Download-15-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Diamant')">
-      <img src="https://i.postimg.cc/pL6M0Jjb/Download-14-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Kohle')">
-      <img src="https://i.postimg.cc/g0xmdTp2/Alchemy-Symbols-Visual-Library-of-Alchemy-Symbols-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Uran')">
+      <strong>Rohstoffe:</strong><br />
+      <img src="https://i.postimg.cc/MKtSBSKG/TOOLS-069-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Eisen')" />
+      <img src="https://i.postimg.cc/NG6YgX3m/Shid-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Kupfer')" />
+      <img src="https://i.postimg.cc/7LjDLnPM/Science-flask-symbol-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Lithium')" />
+      <img src="https://i.postimg.cc/Twmx55p8/Religious-Salt-free-icons-designed-by-Freepik-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Salz')" />
+      <img src="https://i.postimg.cc/FHRQgB7V/images-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Erdgas')" />
+      <img src="https://i.postimg.cc/T37fzXZs/H2o-Clipart-Transparent-Background-Vector-H2o-Icon-H20-Water-Drop-PNG-Image-For-Free-Download-re.png" class="legend-icon" onclick="selectIcon(this, 'Wasser')" />
+      <img src="https://i.postimg.cc/kXynySwq/Download-16-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Holz')" />
+      <img src="https://i.postimg.cc/3J3hWRh6/Download-15-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Diamant')" />
+      <img src="https://i.postimg.cc/pL6M0Jjb/Download-14-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Kohle')" />
+      <img src="https://i.postimg.cc/g0xmdTp2/Alchemy-Symbols-Visual-Library-of-Alchemy-Symbols-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Uran')" />
     </div>
 
     <div id="importance" class="legend-box">
-      <strong>Wichtigkeit:</strong><br>
+      <strong>Wichtigkeit:</strong><br />
       <button class="importance-button importance-low" onclick="setImportance('low')">Niedrig</button>
       <button class="importance-button importance-medium" onclick="setImportance('medium')">Mittel</button>
       <button class="importance-button importance-high" onclick="setImportance('high')">Hoch</button>
-      <div class="control-buttons">
-        <button onclick="clearAllMarkers()">Alle löschen</button>
-        <button onclick="exportMarkers()">Exportieren</button>
-        <input type="file" onchange="importMarkers(event)">
-      </div>
     </div>
+  </div>
+
+  <!-- Raketen Fenster -->
+  <div id="missileWindow">
+    <button class="closeBtn" onclick="document.getElementById('missileWindow').style.display='none'">×</button>
+    <h3>Raketenreichweite</h3>
+    <p id="missileDistance"></p>
+    <div id="missilesGroundAir"><h4>Boden-Luft-Raketen</h4><ul></ul></div>
+    <div id="missilesAirGround"><h4>Luft-Boden-Raketen</h4><ul></ul></div>
+    <div id="missilesNuclear"><h4>Atomraketen</h4><ul></ul></div>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -123,119 +182,226 @@
     let selectedIconUrl = null;
     let selectedIconEl = null;
     let selectedImportance = 'low';
+
     const markers = [];
+
+    // Für Distanzmessung
+    let distancePoints = [];
+    let distanceLine = null;
+    let distanceLabel = null;
+
+    // Raketen Daten
+    const missiles = [
+      { name: "MIM-104 Patriot", country: "USA", range: 160, category: "ground-air" },
+      { name: "S-400 Triumf", country: "Russland", range: 400, category: "ground-air" },
+      { name: "Iron Dome", country: "Israel", range: 70, category: "ground-air" },
+
+      { name: "AGM-158 JASSM", country: "USA", range: 370, category: "air-ground" },
+      { name: "YJ-12", country: "China", range: 400, category: "air-ground" },
+      { name: "Storm Shadow", country: "UK/Frankreich", range: 560, category: "air-ground" },
+      { name: "Kh-31", country: "Russland", range: 110, category: "air-ground" },
+
+      { name: "RS-28 Sarmat", country: "Russland", range: 18000, category: "nuclear" },
+      { name: "LGM-30 Minuteman III", country: "USA", range: 13000, category: "nuclear" },
+      { name: "DF-41", country: "China", range: 12000, category: "nuclear" },
+      { name: "Trident II D5", country: "USA", range: 12000, category: "nuclear" },
+      { name: "Agni-V", country: "Indien", range: 5000, category: "nuclear" },
+    ];
 
     function selectIcon(el, name) {
       if (selectedIconEl === el) {
+        // Deselect
+        el.classList.remove('selected');
         selectedIconUrl = null;
-        selectedIconEl.classList.remove("selected");
         selectedIconEl = null;
       } else {
-        if (selectedIconEl) selectedIconEl.classList.remove("selected");
+        // Deselect old
+        if (selectedIconEl) selectedIconEl.classList.remove('selected');
+        // Select new
+        el.classList.add('selected');
         selectedIconUrl = el.src;
-        el.classList.add("selected");
         selectedIconEl = el;
       }
     }
 
     function setImportance(level) {
       selectedImportance = level;
+      alert("Wichtigkeit gesetzt auf: " + level);
     }
 
-    function toggleLegends() {
-      const legend = document.getElementById("legend");
-      const importance = document.getElementById("importance");
-      const isVisible = legend.style.display === "block";
-      legend.style.display = isVisible ? "none" : "block";
-      importance.style.display = isVisible ? "none" : "block";
+    // Marker Icon erstellen
+    function createIcon(url) {
+      return L.icon({
+        iconUrl: url,
+        iconSize: [35, 35],
+        iconAnchor: [17, 35],
+        popupAnchor: [0, -35],
+      });
     }
 
+    // Marker speichern
     function saveMarkers() {
       const data = markers.map(m => ({
         lat: m.getLatLng().lat,
         lng: m.getLatLng().lng,
-        iconUrl: m.options.icon.options.iconUrl,
-        importance: m.options.icon.options.className.replace("importance-", ""),
-        tooltip: m.getTooltip()?.getContent() || ""
+        icon: m.options.icon.options.iconUrl,
+        importance: m.options.importance
       }));
-      localStorage.setItem("savedMarkers", JSON.stringify(data));
+      localStorage.setItem('markers', JSON.stringify(data));
+      alert('Marker gespeichert!');
     }
 
+    // Marker laden
     function loadMarkers() {
-      const data = JSON.parse(localStorage.getItem("savedMarkers"));
+      const data = JSON.parse(localStorage.getItem('markers'));
       if (!data) return;
-      data.forEach(item => createMarker(item.lat, item.lng, item.iconUrl, item.importance, item.tooltip));
-    }
-
-    function createMarker(lat, lng, iconUrl, importance, tooltipText = "") {
-      const icon = L.icon({
-        iconUrl: iconUrl,
-        iconSize: [32, 32],
-        className: `importance-${importance}`
-      });
-
-      const marker = L.marker([lat, lng], { icon }).addTo(map);
-      if (tooltipText) marker.bindTooltip(tooltipText, { permanent: false });
-
-      marker.on('contextmenu', function () {
-        map.removeLayer(marker);
-        markers.splice(markers.indexOf(marker), 1);
-        saveMarkers();
-      });
-
-      markers.push(marker);
-      saveMarkers();
-
-      map.on('zoomend', function () {
-        const currentZoom = map.getZoom();
-        if (currentZoom < 4) map.removeLayer(marker);
-        else map.addLayer(marker);
+      data.forEach(item => {
+        const marker = L.marker([item.lat, item.lng], {
+          icon: createIcon(item.icon),
+          importance: item.importance
+        }).addTo(map);
+        marker.bindPopup(`<b>Rohstoff</b><br>Wichtigkeit: ${item.importance}`);
+        markers.push(marker);
       });
     }
 
+    // Initial Marker laden
+    loadMarkers();
+
+    // Legend anzeigen/ausblenden
+    function toggleLegends() {
+      const legend = document.getElementById('legend');
+      const importance = document.getElementById('importance');
+      if (legend.style.display === 'block') {
+        legend.style.display = 'none';
+        importance.style.display = 'none';
+      } else {
+        legend.style.display = 'block';
+        importance.style.display = 'block';
+      }
+    }
+
+    // Distanzmessung aktiv oder nicht
+    let distanceMeasurementActive = false;
+
+    // Reset Distanzmessung
+    function resetDistanceMeasurement() {
+      distancePoints = [];
+      if (distanceLine) {
+        map.removeLayer(distanceLine);
+        distanceLine = null;
+      }
+      if (distanceLabel) {
+        map.removeLayer(distanceLabel);
+        distanceLabel = null;
+      }
+      document.getElementById('missileWindow').style.display = 'none';
+    }
+
+    // Button Distanzmessung
+    const distanceBtn = document.getElementById('distanceToggleBtn');
+    distanceBtn.onclick = function() {
+      distanceMeasurementActive = !distanceMeasurementActive;
+      resetDistanceMeasurement();
+
+      if (distanceMeasurementActive) {
+        distanceBtn.textContent = "Distanzmessung stoppen";
+        // Eventlistener aktivieren
+        map.getContainer().style.cursor = 'crosshair';
+      } else {
+        distanceBtn.textContent = "Distanzmessung starten";
+        map.getContainer().style.cursor = '';
+        document.getElementById('missileWindow').style.display = 'none';
+      }
+    };
+
+    // Karte Klick-Handler
     map.on('click', function (e) {
-      if (selectedIconUrl) {
-        const tooltipText = prompt("Beschreibung für diesen Punkt?");
-        createMarker(e.latlng.lat, e.latlng.lng, selectedIconUrl, selectedImportance, tooltipText);
+      if (distanceMeasurementActive) {
+        if (distancePoints.length === 2) {
+          resetDistanceMeasurement();
+        }
+        distancePoints.push(e.latlng);
+
+        if (distancePoints.length === 2) {
+          // Linie zeichnen
+          distanceLine = L.polyline(distancePoints, {color: 'red'}).addTo(map);
+
+          // Distanz berechnen (Luftlinie)
+          const distanceMeters = distancePoints[0].distanceTo(distancePoints[1]);
+          const distanceKm = distanceMeters / 1000;
+
+          // Distanzlabel in der Mitte der Linie
+          const midpointLat = (distancePoints[0].lat + distancePoints[1].lat) / 2;
+          const midpointLng = (distancePoints[0].lng + distancePoints[1].lng) / 2;
+
+          distanceLabel = L.marker([midpointLat, midpointLng], {
+            icon: L.divIcon({
+              className: 'distance-label',
+              html: `<div style="background: white; padding: 3px 6px; border-radius: 4px; border: 1px solid gray; font-weight: bold;">${distanceKm.toFixed(2)} km</div>`,
+              iconSize: [100, 30],
+              iconAnchor: [50, 15],
+            }),
+            interactive: false
+          }).addTo(map);
+
+          showMissilesForDistance(distanceKm);
+        }
+      } else {
+        // Normale Marker setzen nur, wenn Distanzmessung deaktiviert
+        if (!selectedIconUrl) {
+          alert('Bitte wähle erst ein Rohstoff-Icon aus.');
+          return;
+        }
+        const marker = L.marker(e.latlng, {
+          icon: createIcon(selectedIconUrl),
+          importance: selectedImportance
+        }).addTo(map);
+        marker.bindPopup(`<b>Rohstoff</b><br>Wichtigkeit: ${selectedImportance}`);
+        markers.push(marker);
+        saveMarkers();
       }
     });
 
-    function clearAllMarkers() {
-      markers.forEach(marker => map.removeLayer(marker));
-      markers.length = 0;
-      localStorage.removeItem("savedMarkers");
-    }
+    // Doppelklick zum Zurücksetzen der Distanzmessung nur wenn aktiv
+    map.on('dblclick', function(e) {
+      if (distanceMeasurementActive) {
+        resetDistanceMeasurement();
+      }
+    });
 
-    function exportMarkers() {
-      const dataStr = JSON.stringify(markers.map(m => ({
-        lat: m.getLatLng().lat,
-        lng: m.getLatLng().lng,
-        iconUrl: m.options.icon.options.iconUrl,
-        importance: m.options.icon.options.className.replace("importance-", ""),
-        tooltip: m.getTooltip()?.getContent() || ""
-      })), null, 2);
-      const blob = new Blob([dataStr], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "marker_export.json";
-      a.click();
-      URL.revokeObjectURL(url);
-    }
+    // Raketen-Fenster Funktion
+    function showMissilesForDistance(distance) {
+      if (distance < 60) {
+        alert("Mindestdistanz für Raketenanzeige: 60 km");
+        document.getElementById('missileWindow').style.display = 'none';
+        return;
+      }
+      document.getElementById('missileWindow').style.display = 'block';
+      document.getElementById('missileDistance').textContent = `Distanz: ${distance.toFixed(2)} km`;
 
-    function importMarkers(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        const data = JSON.parse(e.target.result);
-        clearAllMarkers();
-        data.forEach(item => createMarker(item.lat, item.lng, item.iconUrl, item.importance, item.tooltip));
-      };
-      reader.readAsText(file);
-    }
+      // Filter nach Kategorie und Reichweite
+      const groundAirList = missiles.filter(m => m.category === 'ground-air' && m.range >= distance);
+      const airGroundList = missiles.filter(m => m.category === 'air-ground' && m.range >= distance);
+      const nuclearList = missiles.filter(m => m.category === 'nuclear' && m.range >= distance);
 
-    loadMarkers();
+      function fillList(id, list) {
+        const ul = document.querySelector(`#${id} ul`);
+        ul.innerHTML = "";
+        if (list.length === 0) {
+          ul.innerHTML = "<li>Keine Raketen gefunden</li>";
+          return;
+        }
+        list.forEach(m => {
+          ul.innerHTML += `<li>🚀 <b>${m.name}</b> (${m.country}) – ${m.range} km</li>`;
+        });
+      }
+
+      fillList('missilesGroundAir', groundAirList);
+      fillList('missilesAirGround', airGroundList);
+      fillList('missilesNuclear', nuclearList);
+    }
   </script>
 </body>
 </html>
+
