@@ -113,6 +113,9 @@
     let selectedIconEl = null;
     let selectedImportance = 'low';
 
+    // Alle Marker im Speicher
+    const markers = [];
+
     function selectIcon(el, name) {
       if (selectedIconEl === el) {
         selectedIconUrl = null;
@@ -138,6 +141,56 @@
       importance.style.display = isVisible ? "none" : "block";
     }
 
+    // Speichern aller Marker im localStorage
+    function saveMarkers() {
+      const data = markers.map(marker => {
+        const latlng = marker.getLatLng();
+        const iconUrl = marker.options.icon.options.iconUrl;
+        const importance = marker.options.icon.options.className.replace("importance-", "");
+        return {
+          lat: latlng.lat,
+          lng: latlng.lng,
+          iconUrl,
+          importance
+        };
+      });
+      localStorage.setItem("savedMarkers", JSON.stringify(data));
+    }
+
+    // Marker aus localStorage laden
+    function loadMarkers() {
+      const data = JSON.parse(localStorage.getItem("savedMarkers"));
+      if (!data) return;
+
+      data.forEach(item => {
+        const icon = L.icon({
+          iconUrl: item.iconUrl,
+          iconSize: [32, 32],
+          className: `importance-${item.importance}`
+        });
+        const marker = L.marker([item.lat, item.lng], { icon }).addTo(map);
+        markers.push(marker);
+      });
+    }
+
+    // Marker nach Zoom ausblenden/anzeigen
+    function updateMarkersVisibility() {
+      const currentZoom = map.getZoom();
+      markers.forEach(marker => {
+        if (currentZoom < 4) {
+          if (map.hasLayer(marker)) {
+            map.removeLayer(marker);
+          }
+        } else {
+          if (!map.hasLayer(marker)) {
+            map.addLayer(marker);
+          }
+        }
+      });
+    }
+
+    map.on('zoomend', updateMarkersVisibility);
+
     map.on('click', function (e) {
       if (selectedIconUrl) {
         const icon = L.icon({
@@ -147,18 +200,15 @@
         });
 
         const marker = L.marker(e.latlng, { icon }).addTo(map);
-
-        // Optional: bei Zoomlevel Marker ausblenden (wie vorher)
-        map.on('zoomend', function () {
-          const currentZoom = map.getZoom();
-          if (currentZoom < 4) {
-            map.removeLayer(marker);
-          } else {
-            map.addLayer(marker);
-          }
-        });
+        markers.push(marker);
+        saveMarkers();
+        updateMarkersVisibility();
       }
     });
+
+    // Beim Laden Marker aus localStorage laden
+    loadMarkers();
+    updateMarkersVisibility();
   </script>
 </body>
 </html>
