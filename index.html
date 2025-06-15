@@ -4,10 +4,7 @@
   <meta charset="utf-8" />
   <title>Rohstoffkarte</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     html, body, #map {
       height: 100%;
@@ -70,6 +67,15 @@
     .importance-high {
       background-color: red;
     }
+
+    .control-buttons {
+      margin-top: 10px;
+    }
+
+    .control-buttons button {
+      margin: 3px;
+      padding: 5px 10px;
+    }
   </style>
 </head>
 <body>
@@ -77,7 +83,7 @@
 
   <div class="legend-container">
     <button class="legend-toggle" onclick="toggleLegends()">🡹</button>
-    
+
     <div id="legend" class="legend-box">
       <strong>Rohstoffe:</strong><br>
       <img src="https://i.postimg.cc/MKtSBSKG/TOOLS-069-removebg-preview.png" class="legend-icon" onclick="selectIcon(this, 'Eisen')">
@@ -97,6 +103,11 @@
       <button class="importance-button importance-low" onclick="setImportance('low')">Niedrig</button>
       <button class="importance-button importance-medium" onclick="setImportance('medium')">Mittel</button>
       <button class="importance-button importance-high" onclick="setImportance('high')">Hoch</button>
+      <div class="control-buttons">
+        <button onclick="clearAllMarkers()">Alle löschen</button>
+        <button onclick="exportMarkers()">Exportieren</button>
+        <input type="file" onchange="importMarkers(event)">
+      </div>
     </div>
   </div>
 
@@ -112,8 +123,6 @@
     let selectedIconUrl = null;
     let selectedIconEl = null;
     let selectedImportance = 'low';
-
-    // Alle Marker im Speicher
     const markers = [];
 
     function selectIcon(el, name) {
@@ -141,74 +150,92 @@
       importance.style.display = isVisible ? "none" : "block";
     }
 
-    // Speichern aller Marker im localStorage
     function saveMarkers() {
-      const data = markers.map(marker => {
-        const latlng = marker.getLatLng();
-        const iconUrl = marker.options.icon.options.iconUrl;
-        const importance = marker.options.icon.options.className.replace("importance-", "");
-        return {
-          lat: latlng.lat,
-          lng: latlng.lng,
-          iconUrl,
-          importance
-        };
-      });
+      const data = markers.map(m => ({
+        lat: m.getLatLng().lat,
+        lng: m.getLatLng().lng,
+        iconUrl: m.options.icon.options.iconUrl,
+        importance: m.options.icon.options.className.replace("importance-", ""),
+        tooltip: m.getTooltip()?.getContent() || ""
+      }));
       localStorage.setItem("savedMarkers", JSON.stringify(data));
     }
 
-    // Marker aus localStorage laden
     function loadMarkers() {
       const data = JSON.parse(localStorage.getItem("savedMarkers"));
       if (!data) return;
-
-      data.forEach(item => {
-        const icon = L.icon({
-          iconUrl: item.iconUrl,
-          iconSize: [32, 32],
-          className: `importance-${item.importance}`
-        });
-        const marker = L.marker([item.lat, item.lng], { icon }).addTo(map);
-        markers.push(marker);
-      });
+      data.forEach(item => createMarker(item.lat, item.lng, item.iconUrl, item.importance, item.tooltip));
     }
 
-    // Marker nach Zoom ausblenden/anzeigen
-    function updateMarkersVisibility() {
-      const currentZoom = map.getZoom();
-      markers.forEach(marker => {
-        if (currentZoom < 4) {
-          if (map.hasLayer(marker)) {
-            map.removeLayer(marker);
-          }
-        } else {
-          if (!map.hasLayer(marker)) {
-            map.addLayer(marker);
-          }
-        }
+    function createMarker(lat, lng, iconUrl, importance, tooltipText = "") {
+      const icon = L.icon({
+        iconUrl: iconUrl,
+        iconSize: [32, 32],
+        className: `importance-${importance}`
+      });
+
+      const marker = L.marker([lat, lng], { icon }).addTo(map);
+      if (tooltipText) marker.bindTooltip(tooltipText, { permanent: false });
+
+      marker.on('contextmenu', function () {
+        map.removeLayer(marker);
+        markers.splice(markers.indexOf(marker), 1);
+        saveMarkers();
+      });
+
+      markers.push(marker);
+      saveMarkers();
+
+      map.on('zoomend', function () {
+        const currentZoom = map.getZoom();
+        if (currentZoom < 4) map.removeLayer(marker);
+        else map.addLayer(marker);
       });
     }
-
-    map.on('zoomend', updateMarkersVisibility);
 
     map.on('click', function (e) {
       if (selectedIconUrl) {
-        const icon = L.icon({
-          iconUrl: selectedIconUrl,
-          iconSize: [32, 32],
-          className: `importance-${selectedImportance}`
-        });
-
-        const marker = L.marker(e.latlng, { icon }).addTo(map);
-        markers.push(marker);
-        saveMarkers();
-        updateMarkersVisibility();
+        const tooltipText = prompt("Beschreibung für diesen Punkt?");
+        createMarker(e.latlng.lat, e.latlng.lng, selectedIconUrl, selectedImportance, tooltipText);
       }
     });
 
-    // Beim Laden Marker aus localStorage laden
+    function clearAllMarkers() {
+      markers.forEach(marker => map.removeLayer(marker));
+      markers.length = 0;
+      localStorage.removeItem("savedMarkers");
+    }
+
+    function exportMarkers() {
+      const dataStr = JSON.stringify(markers.map(m => ({
+        lat: m.getLatLng().lat,
+        lng: m.getLatLng().lng,
+        iconUrl: m.options.icon.options.iconUrl,
+        importance: m.options.icon.options.className.replace("importance-", ""),
+        tooltip: m.getTooltip()?.getContent() || ""
+      })), null, 2);
+      const blob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "marker_export.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importMarkers(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const data = JSON.parse(e.target.result);
+        clearAllMarkers();
+        data.forEach(item => createMarker(item.lat, item.lng, item.iconUrl, item.importance, item.tooltip));
+      };
+      reader.readAsText(file);
+    }
+
     loadMarkers();
-    updateMarkersVisibility();
   </script>
 </body>
 </html>
